@@ -1,0 +1,114 @@
+# Configuration for the COCO Latent Diffusion Model (LDM).
+#
+# Requires a pre-trained VAE checkpoint at:
+#   checkpoints/autoencoder/autoencoder.ckpt
+#
+# Text conditioning is provided by a frozen CLIP ViT-L/14 text encoder.
+
+model:
+  target: ldm.models.diffusion.ddpm.LatentDiffusionModel
+  params:
+    # Noise schedule
+    timesteps: 1000
+    beta_schedule: linear
+    linear_start: 0.00085
+    linear_end: 0.012
+    cosine_s: 8.0e-3
+
+    # Loss
+    loss_type: l2
+    l_simple_weight: 1.0
+    original_elbo_weight: 0.0
+    parameterization: eps
+
+    # Latent space
+    image_size: 32          # spatial size of the latent (256 / 8 = 32)
+    channels: 4             # latent channels (z_channels of the VAE)
+    scale_factor: 0.18215
+
+    # EMA
+    use_ema: true
+
+    # Dataset key names
+    first_stage_key: image
+    cond_stage_key: caption
+    conditioning_key: crossattn
+    cond_stage_trainable: false
+
+    # UNet backbone
+    unet_config:
+      target: ldm.modules.diffusionmodules.model.UNetModel
+      params:
+        image_size: 32
+        in_channels: 4
+        out_channels: 4
+        model_channels: 320
+        num_res_blocks: 2
+        attention_resolutions: [4, 2, 1]
+        dropout: 0.0
+        channel_mult: [1, 2, 4, 4]
+        num_heads: 8
+        use_spatial_transformer: true
+        transformer_depth: 1
+        context_dim: 768          # CLIP ViT-L/14 embedding dim
+
+    # Pre-trained VAE (first stage)
+    first_stage_config:
+      target: ldm.models.autoencoder.AutoencoderKL
+      params:
+        embed_dim: 4
+        scale_factor: 0.18215
+        in_channels: 3
+        ch: 128
+        ch_mult: [1, 2, 4, 4]
+        num_res_blocks: 2
+        attn_resolutions: [16]
+        dropout: 0.0
+
+    # Frozen CLIP text encoder (conditioning stage)
+    cond_stage_config:
+      target: ldm.modules.encoders.modules.FrozenCLIPEmbedder
+      params:
+        version: openai/clip-vit-large-patch14
+        max_length: 77
+
+data:
+  target: ldm.data.coco.COCODataModule
+  params:
+    data_root: data/coco
+    batch_size: 8
+    num_workers: 4
+    size: 256
+    flip_p: 0.5
+
+lightning:
+  trainer:
+    max_epochs: 50
+    accelerator: gpu
+    devices: 1
+    precision: 16-mixed
+    log_every_n_steps: 100
+    val_check_interval: 1.0
+    gradient_clip_val: 1.0
+    accumulate_grad_batches: 2
+  callbacks:
+    model_checkpoint:
+      params:
+        dirpath: checkpoints/ldm
+        filename: "ldm-coco-{epoch:02d}-{val/loss_simple:.4f}"
+        save_top_k: 5
+        monitor: "val/loss_simple"
+        mode: min
+        every_n_epochs: 1
+  logger:
+    target: pytorch_lightning.loggers.TensorBoardLogger
+    params:
+      save_dir: logs/ldm
+      name: coco_ldm
+
+optimizer:
+  target: torch.optim.AdamW
+  params:
+    lr: 1.0e-4
+    weight_decay: 0.01
+    betas: [0.9, 0.999]
