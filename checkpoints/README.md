@@ -1,0 +1,1 @@
+`checkpoints` 文件夹包含了训练过程中保存的模型权重（checkpoint）。每个 checkpoint 都是一个 `.pth` 文件，命名格式为 `ckpt_epoch{epoch}.pth`，其中 `{epoch}` 是对应的训练 epoch 数。例如：`ckpt_epoch0100.pth` 表示在第 100 个 epoch 结束时保存的模型权重。
