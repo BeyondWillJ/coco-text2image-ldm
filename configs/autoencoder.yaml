@@ -1,0 +1,53 @@
+# Configuration for training the KL-regularised VAE on COCO images.
+# Train this first; the resulting checkpoint is used as the first_stage_model
+# when training the LDM.
+
+model:
+  target: ldm.models.autoencoder.AutoencoderKL
+  params:
+    embed_dim: 4
+    scale_factor: 0.18215
+    in_channels: 3
+    ch: 128
+    ch_mult: [1, 2, 4, 4]
+    num_res_blocks: 2
+    attn_resolutions: [16]
+    dropout: 0.0
+
+data:
+  target: ldm.data.coco.COCODataModule
+  params:
+    data_root: data/coco
+    batch_size: 8
+    num_workers: 4
+    size: 256
+    flip_p: 0.5
+
+lightning:
+  trainer:
+    max_epochs: 10
+    accelerator: gpu
+    devices: 1
+    precision: 16-mixed
+    log_every_n_steps: 100
+    val_check_interval: 1.0
+    gradient_clip_val: 1.0
+  callbacks:
+    model_checkpoint:
+      params:
+        dirpath: checkpoints/autoencoder
+        filename: "autoencoder-{epoch:02d}-{val/loss:.4f}"
+        save_top_k: 3
+        monitor: "val/loss"
+        mode: min
+  logger:
+    target: pytorch_lightning.loggers.TensorBoardLogger
+    params:
+      save_dir: logs/autoencoder
+      name: kl_vae
+
+optimizer:
+  target: torch.optim.AdamW
+  params:
+    lr: 4.5e-6
+    weight_decay: 0.0
