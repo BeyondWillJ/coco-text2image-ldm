@@ -54,7 +54,7 @@ training_logs_ldm.csv    # 训练损失日志
 DDPM 前向加噪（将干净 Latent $x_0$ 在时间步 $t$ 处混入噪声）：
 
 $$
-x_t = \sqrt{\bar{\alpha}_t}\, x_0 + \sqrt{1 - \bar{\alpha}_t}\, \epsilon
+x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon
 $$
 
 训练目标（MSE 噪声预测损失）：
@@ -68,7 +68,7 @@ $$
 在每个去噪步骤中，用 CFG 引导强度 $w$ 加权组合有条件与无条件预测：
 
 $$
-\hat{\epsilon} = \epsilon_\text{uncond} + w\,(\epsilon_\text{cond} - \epsilon_\text{uncond})
+\hat{\epsilon} = \epsilon_\text{uncond} + w(\epsilon_\text{cond} - \epsilon_\text{uncond})
 $$
 
 默认 `guidance_scale=7.5`，DDIM 50 步生成 $256 \times 256$ 图像。
